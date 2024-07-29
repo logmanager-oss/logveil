@@ -61,3 +61,14 @@ For example, if you want to anonymize values in `msg.src_ip` and `msg.username` 
 Anonymized data will be outputted to provided file path in txt format (unparsed).
 
 Alternatively, if you don't provide file path, output will be written to the console.
+
+## Release
+
+Go to: https://github.com/logmanager-oss/logveil/releases to grab latest version of LogVeil. It is available for Windows, Linux and MacOS (x86_64/Arm64).
+
+We are using Goreleaser (https://goreleaser.com) for building LogVeil release file.
+
+If you wish to create your own release do the following:
+
+1. Clone the repository
+2. Run `CGO_ENABLED=0 GOOS=<your_target_OS> GOARCH=<your_target_CPU_architecture> go build -o logveil ./cmd/main.go`
