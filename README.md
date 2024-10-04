@@ -4,6 +4,10 @@
 
 Logveil is a simple CLI tool for log anonymizaiton. If you ever had a need to create a sample log data but were afraid to leak sensitive info this tool will help you make your logs anonymous.
 
+## Disclaimer
+
+**While LogVeil is designed to anonymize logs effectively, the outcome depends on the configuration. We recommend verifying that the data shared has been fully anonymized and contains no sensitive information!**
+
 ## Usage
 
 There are two components needed to make this work:
