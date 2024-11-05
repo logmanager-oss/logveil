@@ -5,50 +5,52 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/logmanager-oss/logveil/internal/config"
+	"github.com/logmanager-oss/logveil/internal/loader"
 	"golang.org/x/exp/rand"
 )
 
+// Anonymizer represents an object responsible for anonymizing indivisual log lines feed to it. It contains anonymization data which will be used to anonymize input and a random number generator funtion used to select values from anonymization data.
 type Anonymizer struct {
-	csvData  []map[string]string
 	anonData map[string][]string
 	randFunc func(int) int
 }
 
-func New(csvData []map[string]string, anonData map[string][]string) *Anonymizer {
-	return &Anonymizer{
-		csvData:  csvData,
-		anonData: anonData,
-		randFunc: rand.Intn,
+func CreateAnonymizer(config *config.Config) (*Anonymizer, error) {
+	anonymizingData, err := loader.Load(config.AnonymizationDataPath)
+	if err != nil {
+		return nil, fmt.Errorf("loading anonymizing data from dir %s: %v", config.AnonymizationDataPath, err)
 	}
+
+	return &Anonymizer{
+		anonData: anonymizingData,
+		randFunc: rand.Intn,
+	}, nil
 }
 
-func (an *Anonymizer) anonymize() []string {
-	var output []string
-	for _, logLine := range an.csvData {
-		for field, value := range logLine {
-			if field == "raw" {
-				continue
-			}
-
-			if value == "" {
-				continue
-			}
-
-			if anonValues, exists := an.anonData[field]; exists {
-				newAnonValue := anonValues[an.randFunc(len(anonValues))]
-
-				slog.Debug(fmt.Sprintf("Replacing the values for field %s. From %s to %s.\n", field, value, newAnonValue))
-
-				logLine["raw"] = strings.Replace(logLine["raw"], value, newAnonValue, -1)
-			}
+func (an *Anonymizer) Anonymize(logLine map[string]string) string {
+	for field, value := range logLine {
+		if field == "raw" {
+			continue
 		}
 
-		output = append(output, fmt.Sprint(logLine["raw"]))
+		if value == "" {
+			continue
+		}
+
+		if anonValues, exists := an.anonData[field]; exists {
+			newAnonValue := anonValues[an.randFunc(len(anonValues))]
+
+			slog.Debug(fmt.Sprintf("Replacing the values for field %s. From %s to %s.\n", field, value, newAnonValue))
+
+			logLine["raw"] = strings.Replace(logLine["raw"], value, newAnonValue, -1)
+		}
 	}
 
-	return output
+	return logLine["raw"]
 }
 
-func (an *Anonymizer) setRandFunc(randFunc func(int) int) {
+// SetRandFunc sets the function used by Anonymize() to select values from anonymization data at random
+func (an *Anonymizer) SetRandFunc(randFunc func(int) int) {
 	an.randFunc = randFunc
 }
