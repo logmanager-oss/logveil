@@ -3,43 +3,59 @@ package flags
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 )
 
-type input string
-
-func (f *input) String() string {
-	return fmt.Sprint(*f)
-}
-
-func (f *input) Set(value string) error {
-	_, err := os.Stat(value)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("Provided file or dir %s does not exist. Aborting.", value)
+func validateInput(inputPath string) func(string) error {
+	return func(flagValue string) error {
+		fileInfo, err := os.Stat(flagValue)
+		if err != nil {
+			return err
 		}
+
+		if fileInfo.IsDir() {
+			return fmt.Errorf("Output file %s cannot be a directory.\n", flagValue)
+		}
+
+		inputPath = flagValue
+
+		return nil
 	}
-
-	*f = input(value)
-
-	return nil
 }
 
-type output string
+func validateOutput(outputPath string) func(string) error {
+	return func(flagValue string) error {
+		fileInfo, err := os.Stat(flagValue)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil
+			}
+			return err
+		}
 
-func (f *output) String() string {
-	return fmt.Sprint(*f)
+		if fileInfo.IsDir() {
+			return fmt.Errorf("Output file %s cannot be a directory.\n", flagValue)
+		}
+
+		outputPath = flagValue
+
+		return nil
+	}
 }
 
-func (f *output) Set(value string) error {
-	file, err := os.Create(value)
-	if err != nil {
-		return err
+func validateDir(dir string) func(string) error {
+	return func(flagValue string) error {
+		fileInfo, err := os.Stat(flagValue)
+		if err != nil {
+			return err
+		}
+
+		if !fileInfo.IsDir() {
+			return fmt.Errorf("Path to anonymization data %s needs to be a directory.\n", flagValue)
+		}
+
+		dir = flagValue
+
+		return nil
 	}
-	defer file.Close()
-
-	*f = output(value)
-
-	return nil
 }
