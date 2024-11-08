@@ -4,7 +4,7 @@ import (
 	"flag"
 )
 
-func LoadAndValidate() (string, string, string, bool, bool) {
+func LoadAndValidate() (string, string, string, bool, bool, bool) {
 	var anonymizationDataPath string
 	flag.Func("d", "Path to directory with anonymizing data", validateDir(anonymizationDataPath))
 
@@ -14,10 +14,11 @@ func LoadAndValidate() (string, string, string, bool, bool) {
 	var outputPath string
 	flag.Func("o", "Path to output file (default: Stdout)", validateOutput(outputPath))
 
-	var isVerbose = flag.Bool("v", false, "Enable verbose logging")
-	var isLmExport = flag.Bool("e", false, "Change input file type to LM export (default input file type is LM Backup)")
+	var isVerbose = flag.Bool("v", false, "Enable verbose logging (default: Disabled)")
+	var isLmExport = flag.Bool("e", false, "Change input file type to LM export (default: LM Backup)")
+	var isProofWriter = flag.Bool("p", true, "Disable proof wrtier (default: Enabled)")
 
 	flag.Parse()
 
-	return anonymizationDataPath, inputPath, outputPath, *isVerbose, *isLmExport
+	return anonymizationDataPath, inputPath, outputPath, *isVerbose, *isLmExport, *isProofWriter
 }

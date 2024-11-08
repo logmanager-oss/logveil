@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/logmanager-oss/logveil/internal/loader"
+	"github.com/logmanager-oss/logveil/internal/proof"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +30,8 @@ func TestAnonimizer_AnonymizeData(t *testing.T) {
 				t.Fatalf("loading anonymizing data from dir %s: %v", tt.anonymizingDataDir, err)
 			}
 
-			anonymizer := New(anonymizingData)
+			proofWriter := proof.New(true)
+			anonymizer := New(anonymizingData, proofWriter)
 			// Disabling randomization so we know which values to expect
 			anonymizer.SetRandFunc(func(int) int { return 1 })
 			output := anonymizer.Anonymize(tt.input)

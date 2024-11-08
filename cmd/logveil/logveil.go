@@ -8,13 +8,14 @@ import (
 	"github.com/logmanager-oss/logveil/internal/anonymizer"
 	"github.com/logmanager-oss/logveil/internal/flags"
 	"github.com/logmanager-oss/logveil/internal/loader"
+	"github.com/logmanager-oss/logveil/internal/proof"
 	"github.com/logmanager-oss/logveil/internal/runner"
 )
 
 func Run() {
 	slog.Info("Anonymization process started...")
 
-	anonymizingDataDir, inputPath, outputPath, isVerbose, isLmExport := flags.LoadAndValidate()
+	anonymizingDataDir, inputPath, outputPath, isVerbose, isLmExport, isProofWriter := flags.LoadAndValidate()
 
 	if isVerbose {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
@@ -45,7 +46,8 @@ func Run() {
 		slog.Error("loading anonymizing data from dir %s: %v", anonymizingDataDir, err)
 		return
 	}
-	anonymizer := anonymizer.New(anonymizingData)
+	proofWriter := proof.New(isProofWriter)
+	anonymizer := anonymizer.New(anonymizingData, proofWriter)
 
 	if isLmExport {
 		err := runner.AnonymizeLmExport(inputReader, outputWriter, anonymizer)
