@@ -7,7 +7,9 @@ import (
 
 	"github.com/logmanager-oss/logveil/internal/anonymizer"
 	"github.com/logmanager-oss/logveil/internal/flags"
+	"github.com/logmanager-oss/logveil/internal/generator"
 	"github.com/logmanager-oss/logveil/internal/loader"
+	"github.com/logmanager-oss/logveil/internal/lookup"
 	"github.com/logmanager-oss/logveil/internal/proof"
 	"github.com/logmanager-oss/logveil/internal/runner"
 )
@@ -47,7 +49,9 @@ func Run() {
 		return
 	}
 	proofWriter := proof.New(isProofWriter)
-	anonymizer := anonymizer.New(anonymizingData, proofWriter)
+	lookup := lookup.New()
+	generator := &generator.Generator{}
+	anonymizer := anonymizer.New(anonymizingData, proofWriter, lookup, generator)
 
 	if isLmExport {
 		err := runner.AnonymizeLmExport(inputReader, outputWriter, anonymizer)

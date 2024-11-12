@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func LoadAnonData(anonDataDir string) (map[string][]string, error) {
@@ -19,6 +20,11 @@ func LoadAnonData(anonDataDir string) (map[string][]string, error) {
 
 	for _, file := range files {
 		if file.IsDir() {
+			continue
+		}
+
+		if strings.Contains(file.Name(), "ip") {
+			slog.Debug("skipping file with IP addresses - generator handles IP replacements")
 			continue
 		}
 
