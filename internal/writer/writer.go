@@ -1,32 +1,30 @@
 package writer
 
 import (
+	"bufio"
 	"fmt"
 	"log/slog"
 	"os"
+
+	"github.com/logmanager-oss/logveil/internal/config"
+	file "github.com/logmanager-oss/logveil/internal/files"
 )
 
-type Output struct {
-	Output []string
-}
-
-func (o *Output) Write(filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer func(fs *os.File) {
-		if err := fs.Close(); err != nil {
-			slog.Error(err.Error())
-		}
-	}(file)
-
-	for _, line := range o.Output {
-		_, err := file.WriteString(line + "\n")
+func CreateOutputWriter(configFile *config.Config, openFiles *file.FilesHandler) (*bufio.Writer, error) {
+	var outputFile *os.File
+	if configFile.OutputPath != "" {
+		outputFile, err := os.Create(configFile.OutputPath)
 		if err != nil {
-			return fmt.Errorf("writing anonymized data to output file %s: %v", filename, err)
+			return nil, fmt.Errorf("opening output file for writing: %v", err)
 		}
+		openFiles.Add(outputFile)
+
+	} else {
+		slog.Debug("output path empty - defaulting to stdout")
+		outputFile = os.Stdout
 	}
 
-	return nil
+	outputWriter := bufio.NewWriter(outputFile)
+
+	return outputWriter, nil
 }
