@@ -7,13 +7,13 @@ import (
 	"os"
 
 	"github.com/logmanager-oss/logveil/internal/config"
-	file "github.com/logmanager-oss/logveil/internal/files"
+	"github.com/logmanager-oss/logveil/internal/files"
 )
 
-func CreateOutputWriter(configFile *config.Config, openFiles *file.FilesHandler) (*bufio.Writer, error) {
+func CreateOutputWriter(config *config.Config, openFiles *files.FilesHandler) (*bufio.Writer, error) {
 	var outputFile *os.File
-	if configFile.OutputPath != "" {
-		outputFile, err := os.Create(configFile.OutputPath)
+	if config.OutputPath != "" {
+		outputFile, err := os.Create(config.OutputPath)
 		if err != nil {
 			return nil, fmt.Errorf("opening output file for writing: %v", err)
 		}

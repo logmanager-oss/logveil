@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/logmanager-oss/logveil/internal/config"
-	file "github.com/logmanager-oss/logveil/internal/files"
+	"github.com/logmanager-oss/logveil/internal/files"
 )
 
 type InputReader interface {
@@ -13,14 +13,14 @@ type InputReader interface {
 	Close() error
 }
 
-func CreateInputReader(config *config.Config, openFiles *file.FilesHandler) (InputReader, error) {
+func CreateInputReader(config *config.Config, openFiles *files.FilesHandler) (InputReader, error) {
 	inputFile, err := os.Open(config.InputPath)
 	if err != nil {
 		return nil, fmt.Errorf("opening input file for reading: %v", err)
 	}
 	openFiles.Add(inputFile)
 
-	if *config.IsLmExport {
+	if config.IsLmExport {
 		inputReader, err := NewLmExportReader(inputFile)
 		if err != nil {
 			return nil, fmt.Errorf("initializin LM Export reader: %v", err)

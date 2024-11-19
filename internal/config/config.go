@@ -9,8 +9,9 @@ type Config struct {
 	AnonymizationDataPath string
 	InputPath             string
 	OutputPath            string
-	IsVerbose             *bool
-	IsLmExport            *bool
+	IsVerbose             bool
+	IsLmExport            bool
+	IsProofWriter         bool
 }
 
 // LoadAndValidate loads values from user supplied input into Config struct and validates them
@@ -21,8 +22,9 @@ func (c *Config) LoadAndValidate() {
 
 	flag.Func("o", "Path to output file (default: Stdout)", validateOutput(c.OutputPath))
 
-	c.IsVerbose = flag.Bool("v", false, "Enable verbose logging (default: Disabled)")
-	c.IsLmExport = flag.Bool("e", false, "Change input file type to LM export (default: LM Backup)")
+	flag.BoolVar(&c.IsVerbose, "v", false, "Enable verbose logging (default: Disabled)")
+	flag.BoolVar(&c.IsLmExport, "e", false, "Change input file type to LM export (default: LM Backup)")
+	flag.BoolVar(&c.IsProofWriter, "p", true, "Disable proof wrtier (default: Enabled)")
 
 	flag.Parse()
 }
