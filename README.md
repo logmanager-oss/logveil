@@ -63,10 +63,12 @@ Usage of ./logveil:
 
 ### How it works
 
+**This is only a simplified example and does not match 1:1 with how anonymization is actually implemented**
+
 Consider below log line. It is formatted in a common `key:value` format.
 
 ```
-{"@timestamp": "2024-06-05T14:59:27.000+00:00", "src_ip":"89.239.31.49", "username":"test.user@test.cz", "organization":"TESTuser.test.com"}
+{"@timestamp": "2024-06-05T14:59:27.000+00:00", "src_ip":"89.239.31.49", "username":"test.user@test.cz", "organization":"TESTuser.test.com", "mac": "71:e5:41:18:cb:3e"}
 ```
 
 First, LogVeil will load anonymization data from supplied directory (`-d example_anon_data/`). Each file in that folder should be named according to the values it will be masking. For example, lets assume we have following directory structure:
@@ -80,31 +82,43 @@ Next, LogVeil will go over each log line in supplied input and extract `key:valu
 2. `"src_ip":"89.239.31.49"`
 3. `"username":"test.user@test.cz"`
 4. `"organization":"TESTuser.test.com"`
+5. `"mac": "71:e5:41:18:cb:3e"`
 
 Then, LogVeil will try to match extracted pairs to anonymization data it loaded in previous step. Two paris should be matched:
 
-1. `"username":"test.user@test.cz"` with `username.txt`
-2. `"organization":"TESTuser.test.com"` with `organization.txt`
+1. `"src_ip":"89.239.31.49"` with `src_ip.txt`
+2. `"username":"test.user@test.cz"` with `username.txt`
+3. `"organization":"TESTuser.test.com"` with `organization.txt`
 
-Now LogVeil will grab a random values from files which filenames matched with keys and replace original values with them. Outcome should look like this:
+And one pair should be matched by regular expression scanning:
 
-1. `"username":"ladislav.dosek"`
-2. `"organization":"Apple"`
+1. `"mac": "71:e5:41:18:cb:3e"`
 
-And thats it. Now anonymized log can be written to output along with anonymization proof:
+Now LogVeil will grab values (randomly) from files which filenames matched with keys, generate new value for `mac` key and create a replacement map in format `"original_value":"new_value"`:
+
+1. `"89.239.31.49":"10.20.0.53"`
+1. `"test.user@test.cz":"ladislav.dosek"`
+2. `"TESTuser.test.com":"Apple"`
+3. `"71:e5:41:18:cb:3e": "0f:da:68:92:7f:2b"`
+
+Now each element from the above list will be iterated over and compared against log line. Whenever `original_value` is found it will be replaced with `new_value`. Outcome should look like this:
 
 ```
-{"@timestamp": "2024-06-05T14:59:27.000+00:00", "src_ip":"89.239.31.49", "username":"ladislav.dosek", "organization":"Apple"}
+{"@timestamp": "2024-06-05T14:59:27.000+00:00", "src_ip":"10.20.0.53", "username":"ladislav.dosek", "organization":"Apple", "mac": "0f:da:68:92:7f:2b"}
 ```
 
 ```
+{"original": "27.221.126.209", "new": "10.20.0.53"},
 "{"original":"test.user@test.cz","new":"ladislav.dosek"}"
 "{"original":"TESTuser.test.com","new":"Apple"}"
+{"original": "71:e5:41:18:cb:3e", "new": "0f:da:68:92:7f:2b"},
 ```
 
 ### Anonymization data
 
 Each `key:value` pair which you want to anonymize data must have its equivalent in anonymization data folder.
+
+If anonymization data does not exist for any given `key:value` pair then LogVeil will attempt to use regular expressions to match and replace common values such as: IPv4, IPv6, MAC, Emails and URLs.
 
 For example, if you want to anonymize values in `organization` and `username` keys, you need to have two files of the same name in anonymization folder containing some random data.
 

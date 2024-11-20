@@ -4,10 +4,13 @@ import (
 	"bufio"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 )
+
+var syntaxError *json.SyntaxError
 
 // LmBackup represents log line in LM Backup format
 type LmBackup struct {
@@ -54,7 +57,14 @@ func (r *LmBackupReader) ReadLine() (map[string]string, error) {
 	lmBackup := &LmBackup{}
 	err := json.Unmarshal(line, &lmBackup)
 	if err != nil {
+		if errors.As(err, &syntaxError) {
+			return nil, fmt.Errorf("Malformed lm backup file: %v", err)
+		}
 		return nil, err
+	}
+
+	if lmBackup.Source.Raw == "" {
+		return nil, fmt.Errorf("Malformed lm backup file - raw field cannot be empty")
 	}
 
 	// Convert map[string]interface{} to map[string]string as requred by anonymizer

@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"math/rand"
 	"os"
 	"testing"
 
+	"github.com/go-faker/faker/v4"
 	"github.com/logmanager-oss/logveil/cmd/logveil"
 	"github.com/logmanager-oss/logveil/internal/anonymizer"
 	"github.com/logmanager-oss/logveil/internal/config"
@@ -24,19 +26,21 @@ func TestLogVeil_IntegrationTest(t *testing.T) {
 		expectedProof  []map[string]interface{}
 	}{
 		{
-			name: "Test Test LM Backup Anonymizer",
+			name: "Test LM Backup Anonymizer",
 			config: &config.Config{
 				AnonymizationDataPath: "data/anonymization_data",
 				InputPath:             "data/lm_backup_test_input.gz",
 				IsLmExport:            false,
 				IsProofWriter:         true,
 			},
-			expectedOutput: "<189>date=2024-11-06 time=12:29:25 devname=\"LM-FW-70F-Praha\" devid=\"FGT70FTK22012016\" eventtime=1730892565525108329 tz=\"+0100\" logid=\"0000000013\" type=\"traffic\" subtype=\"forward\" level=\"notice\" vd=\"root\" srcip=10.20.0.53 srcport=57158 srcintf=\"lan1\" srcintfrole=\"wan\" dstip=227.51.221.89 dstport=80 dstintf=\"lan1\" dstintfrole=\"lan\" srccountry=\"China\" dstcountry=\"Czech Republic\" sessionid=179455916 proto=6 action=\"client-rst\" policyid=9 policytype=\"policy\" poluuid=\"d8ccb3e4-74d4-51ef-69a3-73b41f46df74\" policyname=\"Gitlab web from all\" service=\"HTTP\" trandisp=\"noop\" duration=6 sentbyte=80 rcvdbyte=44 sentpkt=2 rcvdpkt=1 appcat=\"unscanned\" srchwvendor=\"H3C\" devtype=\"Router\" mastersrcmac=\"00:23:89:39:a4:ef\" srcmac=\"00:23:89:39:a4:ef\" srcserver=0 dsthwvendor=\"H3C\" dstdevtype=\"Router\" masterdstmac=\"00:23:89:39:a4:fa\" dstmac=\"00:23:89:39:a4:fa\" dstserver=0\n",
+			expectedOutput: "<189>date=2024-11-06 time=12:29:25 devname=\"LM-FW-70F-Praha\" devid=\"FGT70FTK22012016\" eventtime=1730892565525108329 tz=\"+0100\" logid=\"0000000013\" type=\"traffic\" subtype=\"forward\" level=\"notice\" vd=\"root\" srcip=10.20.0.53 srcport=57158 srcintf=\"lan1\" srcintfrole=\"wan\" dstip=227.51.221.89 dstport=80 dstintf=\"lan1\" dstintfrole=\"lan\" srccountry=\"China\" dstcountry=\"Czech Republic\" sessionid=179455916 proto=6 action=\"client-rst\" policyid=9 policytype=\"policy\" poluuid=\"d8ccb3e4-74d4-51ef-69a3-73b41f46df74\" policyname=\"Gitlab web from all\" service=\"HTTP\" trandisp=\"noop\" duration=6 sentbyte=80 rcvdbyte=44 sentpkt=2 rcvdpkt=1 appcat=\"unscanned\" srchwvendor=\"H3C\" devtype=\"Router\" mastersrcmac=\"0f:da:68:92:7f:2b\" srcmac=\"0f:da:68:92:7f:2b\" srcserver=0 dsthwvendor=\"H3C\" dstdevtype=\"Router\" masterdstmac=\"0f:da:68:92:7f:2b\" dstmac=\"0f:da:68:92:7f:2b\" dstserver=0\n",
 			expectedProof: []map[string]interface{}{
 				{"original": "dev-uplink", "new": "lan1"},
-				{"original": "95.80.197.108", "new": "227.51.221.89"},
-				{"original": "27.221.126.209", "new": "10.20.0.53"},
 				{"original": "wan1-lm", "new": "lan1"},
+				{"original": "00:23:89:39:a4:ef", "new": "0f:da:68:92:7f:2b"},
+				{"original": "00:23:89:39:a4:fa", "new": "0f:da:68:92:7f:2b"},
+				{"original": "27.221.126.209", "new": "10.20.0.53"},
+				{"original": "95.80.197.108", "new": "227.51.221.89"},
 			},
 		},
 		{
@@ -49,9 +53,9 @@ func TestLogVeil_IntegrationTest(t *testing.T) {
 			},
 			expectedOutput: "{\"@timestamp\": \"2024-06-05T14:59:27.000+00:00\", \"msg.src_ip\":\"10.20.0.53\", \"username\":\"ladislav.dosek\", \"organization\":\"Apple\"}\n",
 			expectedProof: []map[string]interface{}{
-				{"original": "89.239.31.49", "new": "10.20.0.53"},
 				{"original": "test.user@test.cz", "new": "ladislav.dosek"},
 				{"original": "TESTuser.test.com", "new": "Apple"},
+				{"original": "89.239.31.49", "new": "10.20.0.53"},
 			},
 		},
 	}
@@ -80,6 +84,7 @@ func TestLogVeil_IntegrationTest(t *testing.T) {
 			}
 			// Disabling randomization so we know which values to expect
 			anonymizer.SetRandFunc(func(int) int { return 1 })
+			faker.SetRandomSource(rand.NewSource(1))
 
 			err = logveil.RunAnonymizationLoop(inputReader, outputWriter, anonymizer)
 			if err != nil {

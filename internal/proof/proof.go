@@ -35,27 +35,29 @@ func CreateProofWriter(config *config.Config, openFiles *files.FilesHandler) (*P
 	return &ProofWriter{IsEnabled: false}, nil
 }
 
-func (p *ProofWriter) Write(originalValue string, maskedValue string) {
+func (p *ProofWriter) Write(replacementMap map[string]string) {
 	if !p.IsEnabled {
 		return
 	}
 
-	proof := struct {
-		OriginalValue string `json:"original"`
-		MaskedValue   string `json:"new"`
-	}{
-		OriginalValue: originalValue,
-		MaskedValue:   maskedValue,
-	}
+	for originalValue, newValue := range replacementMap {
+		proof := struct {
+			OriginalValue string `json:"original"`
+			NewValue      string `json:"new"`
+		}{
+			OriginalValue: originalValue,
+			NewValue:      newValue,
+		}
 
-	bytes, err := json.Marshal(proof)
-	if err != nil {
-		slog.Error("marshalling anonymisation proof", "error", err)
-	}
+		bytes, err := json.Marshal(proof)
+		if err != nil {
+			slog.Error("marshalling anonymisation proof", "error", err)
+		}
 
-	_, err = fmt.Fprintf(p.writer, "%s\n", bytes)
-	if err != nil {
-		slog.Error("writing anonymisation proof", "error", err)
+		_, err = fmt.Fprintf(p.writer, "%s\n", bytes)
+		if err != nil {
+			slog.Error("writing anonymisation proof", "error", err)
+		}
 	}
 }
 
