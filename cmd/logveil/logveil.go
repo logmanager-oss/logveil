@@ -10,6 +10,7 @@ import (
 	"github.com/logmanager-oss/logveil/internal/anonymizer"
 	"github.com/logmanager-oss/logveil/internal/config"
 	"github.com/logmanager-oss/logveil/internal/files"
+	"github.com/logmanager-oss/logveil/internal/proof"
 	"github.com/logmanager-oss/logveil/internal/reader"
 	"github.com/logmanager-oss/logveil/internal/writer"
 )
@@ -20,7 +21,7 @@ func Start() {
 	config := &config.Config{}
 	config.LoadAndValidate()
 
-	if *config.IsVerbose {
+	if config.IsVerbose {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
@@ -35,7 +36,11 @@ func Start() {
 	if err != nil {
 		return
 	}
-	anonymizerDoer, err := anonymizer.CreateAnonymizer(config)
+	proofWriter, err := proof.CreateProofWriter(config, filesHandler)
+	if err != nil {
+		return
+	}
+	anonymizerDoer, err := anonymizer.CreateAnonymizer(config, proofWriter)
 	if err != nil {
 		return
 	}
