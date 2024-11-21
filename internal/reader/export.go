@@ -2,7 +2,9 @@ package reader
 
 import (
 	"encoding/csv"
+	"fmt"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -20,6 +22,10 @@ func NewLmExportReader(input *os.File) (*LmExportReader, error) {
 	fieldNames, err := csvReader.Read()
 	if err != nil {
 		return nil, err
+	}
+
+	if !slices.Contains(fieldNames, "raw") {
+		return nil, fmt.Errorf("Malformed lm export file - RAW field is missing")
 	}
 
 	// Trimming prefix from field names
@@ -43,6 +49,10 @@ func (r *LmExportReader) ReadLine() (map[string]string, error) {
 	logLine := make(map[string]string)
 	for i, val := range row {
 		logLine[r.fieldNames[i]] = val
+	}
+
+	if logLine["raw"] == "" {
+		return nil, fmt.Errorf("Malformed lm export file - RAW field cannot be empty")
 	}
 
 	return logLine, nil

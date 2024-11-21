@@ -1,0 +1,2 @@
+@timestamp,raw,msg.src_ip,msg.username,msg.organization
+2024-06-05T14:59:27.000+00:00,"",89.239.31.49,test.user@test.cz,TESTuser.test.com
