@@ -6,12 +6,13 @@ import (
 
 // Config represents user supplied program input
 type Config struct {
-	AnonymizationDataPath string
-	InputPath             string
-	OutputPath            string
-	IsVerbose             bool
-	IsLmExport            bool
-	IsProofWriter         bool
+	AnonymizationDataPath          string
+	InputPath                      string
+	OutputPath                     string
+	CustomAnonymizationMappingPath string
+	IsVerbose                      bool
+	IsLmExport                     bool
+	IsProofWriter                  bool
 }
 
 // LoadAndValidate loads values from user supplied input into Config struct and validates them
@@ -19,6 +20,8 @@ func (c *Config) LoadAndValidate() {
 	flag.Func("d", "Path to directory with anonymizing data", validateDir(c.AnonymizationDataPath))
 
 	flag.Func("i", "Path to input file containing logs to be anonymized", validateInput(c.InputPath))
+
+	flag.Func("c", "Path to input file containing custom anonymization mappings", validateInput(c.CustomAnonymizationMappingPath))
 
 	flag.Func("o", "Path to output file (default: Stdout)", validateOutput(c.OutputPath))
 

@@ -9,21 +9,45 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAnonimizer_Anondataloader(t *testing.T) {
+func TestAnonimizer_LoadCustomAnonymizationMapping(t *testing.T) {
+	tests := []struct {
+		name                           string
+		customAnonymizationMappingPath string
+		expectedMapping                map[string]string
+	}{
+		{
+			name:                           "Test Loading Custom Anonymization Mapping",
+			customAnonymizationMappingPath: "../../tests/data/custom_mappings.txt",
+			expectedMapping:                map[string]string{"replace_this": "with_that", "test_custom_replacement": "test_custom_replacement123"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mapping, err := LoadCustomAnonymizationMapping(tt.customAnonymizationMappingPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assert.Equal(t, tt.expectedMapping, mapping)
+		})
+	}
+}
+
+func TestAnonimizer_LoadAnonymizationData(t *testing.T) {
 	tests := []struct {
 		name           string
 		anonDataDir    string
 		expectedFields []string
 	}{
 		{
-			name:           "Test Anondataloader",
+			name:           "Test Anonymization Data Loading",
 			anonDataDir:    "../../tests/data/anonymization_data",
 			expectedFields: []string{"dst_iface", "dst_ip", "ip", "name", "organization", "src_iface", "src_ip", "username"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			anonData, err := Load(tt.anonDataDir)
+			anonData, err := LoadAnonymizationData(tt.anonDataDir)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -35,17 +35,17 @@ func CreateProofWriter(config *config.Config, openFiles *files.FilesHandler) (*P
 	return &ProofWriter{IsEnabled: false}, nil
 }
 
-func (p *ProofWriter) Write(originalValue string, maskedValue string) {
+func (p *ProofWriter) Write(originalValue string, newValue string) {
 	if !p.IsEnabled {
 		return
 	}
 
 	proof := struct {
 		OriginalValue string `json:"original"`
-		MaskedValue   string `json:"new"`
+		NewValue      string `json:"new"`
 	}{
 		OriginalValue: originalValue,
-		MaskedValue:   maskedValue,
+		NewValue:      newValue,
 	}
 
 	bytes, err := json.Marshal(proof)
