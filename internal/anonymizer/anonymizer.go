@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
-	"strings"
 
 	"github.com/logmanager-oss/logveil/internal/config"
 	"github.com/logmanager-oss/logveil/internal/generator"
@@ -16,31 +15,38 @@ import (
 
 // Anonymizer represents an object responsible for anonymizing indivisual log lines feed to it. It contains anonymization data which will be used to anonymize input and a random number generator funtion used to select values from anonymization data.
 type Anonymizer struct {
-	anonData       map[string][]string
-	randFunc       func(int) int
-	proofWriter    *proof.ProofWriter
-	lookup         *lookup.Lookup
-	generator      *generator.Generator
-	replacementMap map[string]string
+	anonymizationData          map[string][]string
+	customAnonymizationMapping map[string]string
+	randFunc                   func(int) int
+	proofWriter                *proof.ProofWriter
+	lookup                     *lookup.Lookup
+	generator                  *generator.Generator
+	replacementMap             map[string]string
 }
 
 func CreateAnonymizer(config *config.Config, proofWriter *proof.ProofWriter) (*Anonymizer, error) {
-	anonymizingData, err := loader.Load(config.AnonymizationDataPath)
+	customAnonymizationMapping, err := loader.LoadCustomAnonymizationMapping(config.CustomAnonymizationMappingPath)
+	if err != nil {
+		return nil, fmt.Errorf("loading custom anonymization mappings from path %s: %v", config.CustomAnonymizationMappingPath, err)
+	}
+
+	anonymizationData, err := loader.LoadAnonymizationData(config.AnonymizationDataPath)
 	if err != nil {
 		return nil, fmt.Errorf("loading anonymizing data from dir %s: %v", config.AnonymizationDataPath, err)
 	}
 
 	return &Anonymizer{
-		anonData:    anonymizingData,
-		randFunc:    rand.Intn,
-		proofWriter: proofWriter,
-		lookup:      lookup.New(),
-		generator:   &generator.Generator{},
+		anonymizationData:          anonymizationData,
+		customAnonymizationMapping: customAnonymizationMapping,
+		randFunc:                   rand.Intn,
+		proofWriter:                proofWriter,
+		lookup:                     lookup.New(),
+		generator:                  &generator.Generator{},
 	}, nil
 }
 
 func (an *Anonymizer) Anonymize(logLine map[string]string) string {
-	an.replacementMap = make(map[string]string)
+	an.replacementMap = an.customAnonymizationMapping
 
 	an.loadAndReplace(logLine)
 
@@ -51,7 +57,6 @@ func (an *Anonymizer) Anonymize(logLine map[string]string) string {
 	an.generateAndReplace(logLineRaw, an.lookup.ValidEmail, an.generator.GenerateRandomEmail())
 	an.generateAndReplace(logLineRaw, an.lookup.ValidUrl, an.generator.GenerateRandomUrl())
 
-	an.proofWriter.Write(an.replacementMap)
 	an.proofWriter.Flush()
 
 	return an.replace(logLineRaw)
@@ -76,7 +81,7 @@ func (an *Anonymizer) loadAndReplace(logLine map[string]string) {
 			continue
 		}
 
-		if anonValues, exists := an.anonData[field]; exists {
+		if anonValues, exists := an.anonymizationData[field]; exists {
 			newAnonValue := anonValues[an.randFunc(len(anonValues))]
 			an.replacementMap[value] = newAnonValue
 
@@ -98,8 +103,19 @@ func (an *Anonymizer) generateAndReplace(rawLog string, regexp *regexp.Regexp, g
 }
 
 func (an *Anonymizer) replace(rawLog string) string {
-	for oldValue, newValue := range an.replacementMap {
-		rawLog = strings.ReplaceAll(rawLog, oldValue, newValue)
+	for originalValue, newValue := range an.replacementMap {
+		// Added word boundary to avoid matching words withing word. For example "test" in "testing".
+		r := regexp.MustCompile(fmt.Sprintf(`\b%s\b`, originalValue))
+
+		var found bool
+		rawLog = r.ReplaceAllStringFunc(rawLog, func(originalValue string) string {
+			found = true
+			return newValue
+		})
+
+		if found {
+			an.proofWriter.Write(originalValue, newValue)
+		}
 	}
 
 	return rawLog
