@@ -15,23 +15,22 @@ func TestProof_Write(t *testing.T) {
 	tests := []struct {
 		name           string
 		isProofWriter  bool
-		replacementMap map[string]string
+		originalValue  string
+		newValue       string
 		expectedOutput string
 	}{
 		{
-			name:          "Test case 1: write proof",
-			isProofWriter: true,
-			replacementMap: map[string]string{
-				"test": "masked",
-			},
+			name:           "Test case 1: write proof",
+			isProofWriter:  true,
+			originalValue:  "test",
+			newValue:       "masked",
 			expectedOutput: "{\"original\":\"test\",\"new\":\"masked\"}\n",
 		},
 		{
-			name:          "Test case 2: proof writer disabled",
-			isProofWriter: false,
-			replacementMap: map[string]string{
-				"test": "masked",
-			},
+			name:           "Test case 2: proof writer disabled",
+			isProofWriter:  false,
+			originalValue:  "test",
+			newValue:       "masked",
 			expectedOutput: "",
 		},
 	}
@@ -45,7 +44,7 @@ func TestProof_Write(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			p.Write(tt.replacementMap)
+			p.Write(tt.originalValue, tt.newValue)
 			p.Flush()
 
 			file, err := os.OpenFile("proof.json", os.O_RDWR|os.O_CREATE, 0644)
