@@ -3,6 +3,7 @@ package anonymizer
 import (
 	"fmt"
 	"log/slog"
+	"maps"
 	"regexp"
 
 	"github.com/logmanager-oss/logveil/internal/config"
@@ -15,19 +16,19 @@ import (
 
 // Anonymizer represents an object responsible for anonymizing indivisual log lines feed to it. It contains anonymization data which will be used to anonymize input and a random number generator funtion used to select values from anonymization data.
 type Anonymizer struct {
-	anonymizationData          map[string][]string
-	customAnonymizationMapping map[string]string
-	randFunc                   func(int) int
-	proofWriter                *proof.ProofWriter
-	lookup                     *lookup.Lookup
-	generator                  *generator.Generator
-	replacementMap             map[string]string
+	anonymizationData       map[string][]string
+	replacementMap          map[string]string
+	randFunc                func(int) int
+	proofWriter             *proof.ProofWriter
+	lookup                  *lookup.Lookup
+	generator               *generator.Generator
+	isPersistReplacementMap bool
 }
 
 func CreateAnonymizer(config *config.Config, proofWriter *proof.ProofWriter) (*Anonymizer, error) {
-	customAnonymizationMapping, err := loader.LoadCustomAnonymizationMapping(config.CustomAnonymizationMappingPath)
+	customReplacementMap, err := loader.LoadCustomReplacementMap(config.CustomReplacementMapPath)
 	if err != nil {
-		return nil, fmt.Errorf("loading custom anonymization mappings from path %s: %v", config.CustomAnonymizationMappingPath, err)
+		return nil, fmt.Errorf("loading custom replacement map from path %s: %v", config.CustomReplacementMapPath, err)
 	}
 
 	anonymizationData, err := loader.LoadAnonymizationData(config.AnonymizationDataPath)
@@ -36,30 +37,31 @@ func CreateAnonymizer(config *config.Config, proofWriter *proof.ProofWriter) (*A
 	}
 
 	return &Anonymizer{
-		anonymizationData:          anonymizationData,
-		customAnonymizationMapping: customAnonymizationMapping,
-		randFunc:                   rand.Intn,
-		proofWriter:                proofWriter,
-		lookup:                     lookup.New(),
-		generator:                  &generator.Generator{},
+		anonymizationData:       anonymizationData,
+		replacementMap:          customReplacementMap,
+		randFunc:                rand.Intn,
+		proofWriter:             proofWriter,
+		lookup:                  lookup.New(),
+		generator:               &generator.Generator{},
+		isPersistReplacementMap: config.IsPersistReplacementMap,
 	}, nil
 }
 
 func (an *Anonymizer) Anonymize(logLine map[string]string) string {
-	an.replacementMap = an.customAnonymizationMapping
-
-	an.loadAndReplace(logLine)
+	replacementMap := an.loadAndReplace(logLine, an.replacementMap)
 
 	logLineRaw := logLine["raw"]
-	an.generateAndReplace(logLineRaw, an.lookup.ValidIpv4, an.generator.GenerateRandomIPv4())
-	an.generateAndReplace(logLineRaw, an.lookup.ValidIpv6, an.generator.GenerateRandomIPv6())
-	an.generateAndReplace(logLineRaw, an.lookup.ValidMac, an.generator.GenerateRandomMac())
-	an.generateAndReplace(logLineRaw, an.lookup.ValidEmail, an.generator.GenerateRandomEmail())
-	an.generateAndReplace(logLineRaw, an.lookup.ValidUrl, an.generator.GenerateRandomUrl())
+	replacementMap = an.generateAndReplace(logLineRaw, replacementMap, an.lookup.ValidIpv4, an.generator.GenerateRandomIPv4())
+	replacementMap = an.generateAndReplace(logLineRaw, replacementMap, an.lookup.ValidIpv6, an.generator.GenerateRandomIPv6())
+	replacementMap = an.generateAndReplace(logLineRaw, replacementMap, an.lookup.ValidMac, an.generator.GenerateRandomMac())
+	replacementMap = an.generateAndReplace(logLineRaw, replacementMap, an.lookup.ValidEmail, an.generator.GenerateRandomEmail())
+	replacementMap = an.generateAndReplace(logLineRaw, replacementMap, an.lookup.ValidUrl, an.generator.GenerateRandomUrl())
 
-	an.proofWriter.Flush()
+	if an.isPersistReplacementMap {
+		maps.Copy(an.replacementMap, replacementMap)
+	}
 
-	return an.replace(logLineRaw)
+	return an.replace(logLineRaw, replacementMap)
 }
 
 // SetRandFunc sets the function used by Anonymize() to select values from anonymization data at random
@@ -67,7 +69,7 @@ func (an *Anonymizer) SetRandFunc(randFunc func(int) int) {
 	an.randFunc = randFunc
 }
 
-func (an *Anonymizer) loadAndReplace(logLine map[string]string) {
+func (an *Anonymizer) loadAndReplace(logLine map[string]string, replacementMap map[string]string) map[string]string {
 	for field, value := range logLine {
 		if field == "raw" {
 			continue
@@ -77,20 +79,22 @@ func (an *Anonymizer) loadAndReplace(logLine map[string]string) {
 			continue
 		}
 
-		if _, ok := an.replacementMap[value]; ok {
+		if _, ok := replacementMap[value]; ok {
 			continue
 		}
 
 		if anonValues, exists := an.anonymizationData[field]; exists {
 			newAnonValue := anonValues[an.randFunc(len(anonValues))]
-			an.replacementMap[value] = newAnonValue
+			replacementMap[value] = newAnonValue
 
 			slog.Debug(fmt.Sprintf("Replacing the values for field %s. From %s to %s.\n", field, value, newAnonValue))
 		}
 	}
+
+	return replacementMap
 }
 
-func (an *Anonymizer) generateAndReplace(rawLog string, regexp *regexp.Regexp, generatedData string) {
+func (an *Anonymizer) generateAndReplace(rawLog string, replacementMap map[string]string, regexp *regexp.Regexp, generatedData string) map[string]string {
 	values := regexp.FindAllString(rawLog, -1)
 
 	for _, value := range values {
@@ -98,12 +102,14 @@ func (an *Anonymizer) generateAndReplace(rawLog string, regexp *regexp.Regexp, g
 			continue
 		}
 
-		an.replacementMap[value] = generatedData
+		replacementMap[value] = generatedData
 	}
+
+	return replacementMap
 }
 
-func (an *Anonymizer) replace(rawLog string) string {
-	for originalValue, newValue := range an.replacementMap {
+func (an *Anonymizer) replace(rawLog string, replacementMap map[string]string) string {
+	for originalValue, newValue := range replacementMap {
 		// Added word boundary to avoid matching words withing word. For example "test" in "testing".
 		r := regexp.MustCompile(fmt.Sprintf(`\b%s\b`, originalValue))
 

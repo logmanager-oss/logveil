@@ -37,6 +37,8 @@ Usage of ./logveil:
         Change input file type to LM export (default: LM Backup)
   -p
         Disable proof writer (default: Enabled)
+  -r
+        Disable persistent (per session) replacement map (default: Enabled)
   -h
         Help for logveil
 ```
@@ -159,6 +161,10 @@ And anonymization proof:
 {"original":"TESTuser.test.com","new":"Apple"},
 {"original": "71:e5:41:18:cb:3e", "new": "0f:da:68:92:7f:2b"},
 ```
+
+## Replacement map and possible memory issues
+
+LogVeil keeps a replacement map in memory for each code run (per session) to make sure each unique value gets the same anonymized value each time it is encountered. Depending on the size of input data this replacement map can grow quite large, potentially even exhausting available memory (though unlikely). If you'll encounter a memory issue use `-r` flag to disable persistent replacement map.
 
 ## Release
 
