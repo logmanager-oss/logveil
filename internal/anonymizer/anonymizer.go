@@ -6,12 +6,13 @@ import (
 	"maps"
 	"regexp"
 
+	"math/rand/v2"
+
 	"github.com/logmanager-oss/logveil/internal/config"
 	"github.com/logmanager-oss/logveil/internal/generator"
 	"github.com/logmanager-oss/logveil/internal/loader"
 	"github.com/logmanager-oss/logveil/internal/lookup"
 	"github.com/logmanager-oss/logveil/internal/proof"
-	"golang.org/x/exp/rand"
 )
 
 // Anonymizer represents an object responsible for anonymizing indivisual log lines feed to it. It contains anonymization data which will be used to anonymize input and a random number generator funtion used to select values from anonymization data.
@@ -39,7 +40,7 @@ func CreateAnonymizer(config *config.Config, proofWriter *proof.ProofWriter) (*A
 	return &Anonymizer{
 		anonymizationData:       anonymizationData,
 		replacementMap:          customReplacementMap,
-		randFunc:                rand.Intn,
+		randFunc:                rand.IntN,
 		proofWriter:             proofWriter,
 		lookup:                  lookup.New(),
 		generator:               &generator.Generator{},
@@ -62,11 +63,6 @@ func (an *Anonymizer) Anonymize(logLine map[string]string) string {
 	}
 
 	return an.replace(logLineRaw, replacementMap)
-}
-
-// SetRandFunc sets the function used by Anonymize() to select values from anonymization data at random
-func (an *Anonymizer) SetRandFunc(randFunc func(int) int) {
-	an.randFunc = randFunc
 }
 
 func (an *Anonymizer) loadAndReplace(logLine map[string]string, replacementMap map[string]string) map[string]string {

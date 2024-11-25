@@ -1,13 +1,15 @@
 package anonymizer
 
 import (
-	"math/rand"
+	"net"
+	"net/mail"
+	"net/url"
+	"slices"
+	"strings"
 	"testing"
 
-	"github.com/go-faker/faker/v4"
 	"github.com/logmanager-oss/logveil/internal/config"
 	"github.com/logmanager-oss/logveil/internal/proof"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestAnonimizer_AnonymizeData(t *testing.T) {
@@ -34,25 +36,6 @@ func TestAnonimizer_AnonymizeData(t *testing.T) {
 				"custom:":      "replacement_test",
 				"raw":          "2024-06-05T14:59:27.000+00:00, 10.10.10.1, 7f1d:64ed:536a:1fd7:fe8e:cc29:9df4:7911, miloslav.illes, Microsoft, 71:e5:41:18:cb:3e, test@test.com, https://www.testurl.com, replace_this",
 			},
-			expectedOutput: "2024-06-05T14:59:27.000+00:00, 10.20.0.53, 8186:39ac:48a4:c6af:a2f1:581a:8b95:25e2, ladislav.dosek, Apple, 0f:da:68:92:7f:2b, QHtPwsw@RJSkoHl.top, http://soqovkq.com/NfkcUjG.php, with_that",
-		},
-		{
-			name:                           "Test AnonymizeData - with persisten replacement map",
-			anonymizationDataDir:           "../../tests/data/anonymization_data",
-			customAnonymizationMappingPath: "../../tests/data/custom_mappings.txt",
-			input: map[string]string{
-				"@timestamp":   "2024-06-05T14:59:27.000+00:00",
-				"src_ip":       "10.10.10.1",
-				"src_ipv6":     "7f1d:64ed:536a:1fd7:fe8e:cc29:9df4:7911",
-				"mac":          "71:e5:41:18:cb:3e",
-				"email":        "atest@atest.com",
-				"url":          "https://www.testurl.com",
-				"username":     "miloslav.illes",
-				"organization": "Microsoft",
-				"custom:":      "replacement_test",
-				"raw":          "2024-06-05T14:59:27.000+00:00, 10.10.10.1, 7f1d:64ed:536a:1fd7:fe8e:cc29:9df4:7911, miloslav.illes, Microsoft, 71:e5:41:18:cb:3e, test@test.com, https://www.testurl.com, replace_this",
-			},
-			expectedOutput: "2024-06-05T14:59:27.000+00:00, 10.20.0.53, 8186:39ac:48a4:c6af:a2f1:581a:8b95:25e2, ladislav.dosek, Apple, 0f:da:68:92:7f:2b, QHtPwsw@RJSkoHl.top, http://soqovkq.com/NfkcUjG.php, with_that",
 		},
 	}
 
@@ -68,12 +51,56 @@ func TestAnonimizer_AnonymizeData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// Disabling randomization so we know which values to expect
-			anonymizer.SetRandFunc(func(int) int { return 1 })
-			faker.SetRandomSource(rand.NewSource(1))
 			output := anonymizer.Anonymize(tt.input)
 
-			assert.Equal(t, tt.expectedOutput, output)
+			// Verify each part of the output individually - Is generated value valid in terms of its type and not the same as input?
+			parts := strings.Split(output, ", ")
+
+			ipv4 := net.ParseIP(parts[1])
+			if ipv4 == nil || ipv4.String() == tt.input["src_ip"] {
+				t.Fatalf("invalid IPv4 generated or it didn't got replaced at all: %s", parts[1])
+			}
+
+			ipv6 := net.ParseIP(parts[2])
+			if ipv6 == nil || ipv6.String() == tt.input["src_ip"] {
+				t.Fatalf("invalid IPv6 generated or it didn't got replaced at all: %s", parts[2])
+			}
+
+			if !slices.Contains(anonymizer.anonymizationData["username"], parts[3]) || parts[3] == tt.input["username"] {
+				t.Fatalf("invalid username or it didn't got replaced at all: %s", parts[3])
+			}
+
+			if !slices.Contains(anonymizer.anonymizationData["organization"], parts[4]) || parts[4] == tt.input["organization"] {
+				t.Fatalf("invalid organization or it didn't got replaced at all: %s", parts[4])
+			}
+
+			mac, err := net.ParseMAC(parts[5])
+			if err != nil {
+				t.Fatalf("invalid MAC generated: %s", parts[5])
+			}
+			if mac.String() == tt.input["mac"] {
+				t.Fatalf("MAC not replaced at all")
+			}
+
+			email, err := mail.ParseAddress(parts[6])
+			if err != nil {
+				t.Fatalf("invalid email generated: %s", parts[6])
+			}
+			if email.Address == tt.input["email"] {
+				t.Fatalf("email not replaced at all")
+			}
+
+			url, err := url.ParseRequestURI(parts[7])
+			if err != nil {
+				t.Fatalf("invalid url generated: %s", parts[7])
+			}
+			if url.String() == tt.input["url"] {
+				t.Fatalf("url not replaced at all")
+			}
+
+			if parts[8] != anonymizer.replacementMap["replace_this"] {
+				t.Fatalf("custom replacement didn't work")
+			}
 		})
 	}
 }
