@@ -47,7 +47,7 @@ func TestProof_Write(t *testing.T) {
 			p.Write(tt.originalValue, tt.newValue)
 			p.Flush()
 
-			file, err := os.OpenFile("proof.json", os.O_RDWR|os.O_CREATE, 0644)
+			file, err := os.OpenFile(ProofFilename, os.O_RDWR|os.O_CREATE, 0644)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -62,7 +62,7 @@ func TestProof_Write(t *testing.T) {
 
 			assert.Equal(t, tt.expectedOutput, buf.String())
 
-			os.Remove("proof.json")
+			os.Remove(ProofFilename)
 		})
 	}
 }

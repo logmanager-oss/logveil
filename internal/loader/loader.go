@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-func LoadCustomAnonymizationMapping(path string) (map[string]string, error) {
-	customMapping := make(map[string]string)
+func LoadCustomReplacementMap(path string) (map[string]string, error) {
+	customReplacementMap := make(map[string]string)
 
 	file, err := os.OpenFile(path, os.O_RDONLY, os.ModePerm)
 	if err != nil {
@@ -30,14 +30,14 @@ func LoadCustomAnonymizationMapping(path string) (map[string]string, error) {
 		originalValue := values[0]
 		newValue := values[1]
 
-		customMapping[originalValue] = newValue
+		customReplacementMap[originalValue] = newValue
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("error reading custom anonymization mapping: %w", err)
 	}
 
-	return customMapping, nil
+	return customReplacementMap, nil
 }
 
 // LoadAnonymizationData() loads anonymization data from given directory and returns it in a map format of: [filename][]values. Anonymization data is needed for the purposes of masking original values.

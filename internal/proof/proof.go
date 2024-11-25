@@ -11,6 +11,11 @@ import (
 	"github.com/logmanager-oss/logveil/internal/files"
 )
 
+type Proof struct {
+	OriginalValue string `json:"original"`
+	NewValue      string `json:"new"`
+}
+
 type ProofWriter struct {
 	IsEnabled bool
 	writer    *bufio.Writer
@@ -19,7 +24,7 @@ type ProofWriter struct {
 
 func CreateProofWriter(config *config.Config, openFiles *files.FilesHandler) (*ProofWriter, error) {
 	if config.IsProofWriter {
-		file, err := os.Create("proof.json")
+		file, err := os.Create(ProofFilename)
 		if err != nil {
 			return nil, fmt.Errorf("creating/opening proof file: %v", err)
 		}
@@ -40,10 +45,7 @@ func (p *ProofWriter) Write(originalValue string, newValue string) {
 		return
 	}
 
-	proof := struct {
-		OriginalValue string `json:"original"`
-		NewValue      string `json:"new"`
-	}{
+	proof := &Proof{
 		OriginalValue: originalValue,
 		NewValue:      newValue,
 	}

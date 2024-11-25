@@ -9,21 +9,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAnonimizer_LoadCustomAnonymizationMapping(t *testing.T) {
+func TestAnonimizer_LoadCustomReplacementMap(t *testing.T) {
 	tests := []struct {
-		name                           string
-		customAnonymizationMappingPath string
-		expectedMapping                map[string]string
+		name                     string
+		customReplacementMapPath string
+		expectedMapping          map[string]string
 	}{
 		{
-			name:                           "Test Loading Custom Anonymization Mapping",
-			customAnonymizationMappingPath: "../../tests/data/custom_mappings.txt",
-			expectedMapping:                map[string]string{"replace_this": "with_that", "test123": "test1234", "test_custom_replacement": "test_custom_replacement123"},
+			name:                     "Test Loading Custom Anonymization Mapping",
+			customReplacementMapPath: "../../tests/data/custom_mappings.txt",
+			expectedMapping:          map[string]string{"replace_this": "with_that", "test123": "test1234", "test_custom_replacement": "test_custom_replacement123"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mapping, err := LoadCustomAnonymizationMapping(tt.customAnonymizationMappingPath)
+			mapping, err := LoadCustomReplacementMap(tt.customReplacementMapPath)
 			if err != nil {
 				t.Fatal(err)
 			}
