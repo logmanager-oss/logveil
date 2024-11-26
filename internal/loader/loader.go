@@ -13,28 +13,30 @@ import (
 func LoadCustomReplacementMap(path string) (map[string]string, error) {
 	customReplacementMap := make(map[string]string)
 
-	file, err := os.OpenFile(path, os.O_RDONLY, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+	if path != "" {
+		file, err := os.OpenFile(path, os.O_RDONLY, os.ModePerm)
+		if err != nil {
+			return nil, err
+		}
+		defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		values := strings.Split(line, ":")
-		if len(values) == 1 {
-			slog.Error("wrong custom mapping: %s", "error", line)
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := scanner.Text()
+			values := strings.Split(line, ":")
+			if len(values) == 1 {
+				slog.Error("wrong custom mapping: %s", "error", line)
+			}
+
+			originalValue := values[0]
+			newValue := values[1]
+
+			customReplacementMap[originalValue] = newValue
 		}
 
-		originalValue := values[0]
-		newValue := values[1]
-
-		customReplacementMap[originalValue] = newValue
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading custom anonymization mapping: %w", err)
+		if err := scanner.Err(); err != nil {
+			return nil, fmt.Errorf("error reading custom anonymization mapping: %w", err)
+		}
 	}
 
 	return customReplacementMap, nil
