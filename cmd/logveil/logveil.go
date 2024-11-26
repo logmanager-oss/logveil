@@ -40,6 +40,7 @@ func Start() {
 	if err != nil {
 		return
 	}
+	defer proofWriter.Flush()
 	anonymizerDoer, err := anonymizer.CreateAnonymizer(config, proofWriter)
 	if err != nil {
 		return
