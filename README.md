@@ -105,6 +105,8 @@ If you want to anonymize values in `organization` and `username` keys, you need 
 
 Both files should contain appropriate fake data for the values they will be masking.
 
+**Make sure your filenames DOES NOT contain `msg.`**
+
 ### Regexp scanning and dynamic fake data generation
 
 LogVeil implements regular expressions to look for common patterns: IP (v4, v6), Emails, MAC and URL. Once such pattern is found it is replaced with fake data generated on the fly.

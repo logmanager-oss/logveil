@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/logmanager-oss/logveil/internal/config"
-	"github.com/logmanager-oss/logveil/internal/files"
+	"github.com/logmanager-oss/logveil/internal/handlers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,10 +36,13 @@ func TestProof_Write(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filesHandler := &files.FilesHandler{}
+			filesHandler := &handlers.Files{}
 			defer filesHandler.Close()
 
-			p, err := CreateProofWriter(&config.Config{IsProofWriter: tt.isProofWriter}, filesHandler)
+			buffersHandler := &handlers.Buffers{}
+			defer buffersHandler.Flush()
+
+			p, err := CreateProofWriter(&config.Config{IsProofWriter: tt.isProofWriter}, filesHandler, buffersHandler)
 			if err != nil {
 				t.Fatal(err)
 			}

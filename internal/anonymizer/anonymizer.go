@@ -99,6 +99,7 @@ func (an *Anonymizer) generateAndReplace(rawLog string, replacementMap map[strin
 		}
 
 		replacementMap[value] = generatedData
+		slog.Debug(fmt.Sprintf("Value matched via regexp. Reaplacing from %s to %s.\n", value, generatedData))
 	}
 
 	return replacementMap
