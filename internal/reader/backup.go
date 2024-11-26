@@ -12,11 +12,6 @@ import (
 
 var syntaxError *json.SyntaxError
 
-// LmBackup represents log line in LM Backup format
-type LmBackup struct {
-	Source LmLog `json:"_source"`
-}
-
 // LmBackup represents raw and msg fields contained in LM Backup format
 type LmLog struct {
 	Raw string                 `json:"raw"`
@@ -29,13 +24,15 @@ type LmBackupReader struct {
 	file         *os.File
 }
 
-func NewLmBackupReader(input *os.File) (*LmBackupReader, error) {
+func NewLmBackupReader(input *os.File, maxCapacity int) (*LmBackupReader, error) {
 	gzReader, err := gzip.NewReader(input)
 	if err != nil {
 		return nil, fmt.Errorf("error creating gzip reader: %w", err)
 	}
 
 	backupReader := bufio.NewScanner(gzReader)
+	buf := make([]byte, maxCapacity)
+	backupReader.Buffer(buf, maxCapacity)
 
 	return &LmBackupReader{
 		backupReader: backupReader,
@@ -54,8 +51,8 @@ func (r *LmBackupReader) ReadLine() (map[string]string, error) {
 
 	line := r.backupReader.Bytes()
 
-	lmBackup := &LmBackup{}
-	err := json.Unmarshal(line, &lmBackup)
+	lmLog := &LmLog{}
+	err := json.Unmarshal(line, &lmLog)
 	if err != nil {
 		if errors.As(err, &syntaxError) {
 			return nil, fmt.Errorf("Malformed lm backup file: %v", err)
@@ -63,19 +60,19 @@ func (r *LmBackupReader) ReadLine() (map[string]string, error) {
 		return nil, err
 	}
 
-	if lmBackup.Source.Raw == "" {
+	if lmLog.Raw == "" {
 		return nil, fmt.Errorf("Malformed lm backup file - raw field cannot be empty")
 	}
 
 	// Convert map[string]interface{} to map[string]string as requred by anonymizer
 	logLine := make(map[string]string)
-	for key, value := range lmBackup.Source.Msg {
+	for key, value := range lmLog.Msg {
 		strKey := fmt.Sprintf("%v", key)
 		strValue := fmt.Sprintf("%v", value)
 
 		logLine[strKey] = strValue
 	}
-	logLine["raw"] = lmBackup.Source.Raw
+	logLine["raw"] = lmLog.Raw
 
 	return logLine, nil
 }

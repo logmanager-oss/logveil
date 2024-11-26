@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/logmanager-oss/logveil/internal/config"
-	"github.com/logmanager-oss/logveil/internal/files"
+	"github.com/logmanager-oss/logveil/internal/handlers"
 )
 
 type Proof struct {
@@ -22,17 +22,20 @@ type ProofWriter struct {
 	file      *os.File
 }
 
-func CreateProofWriter(config *config.Config, openFiles *files.FilesHandler) (*ProofWriter, error) {
+func CreateProofWriter(config *config.Config, filesHandler *handlers.Files, buffersHandler *handlers.Buffers) (*ProofWriter, error) {
 	if config.IsProofWriter {
 		file, err := os.Create(ProofFilename)
 		if err != nil {
 			return nil, fmt.Errorf("creating/opening proof file: %v", err)
 		}
-		openFiles.Add(file)
+		filesHandler.Add(file)
+
+		proofWriter := bufio.NewWriterSize(file, config.WriterMaxCapacity)
+		buffersHandler.Add(proofWriter)
 
 		return &ProofWriter{
 			IsEnabled: true,
-			writer:    bufio.NewWriter(file),
+			writer:    proofWriter,
 			file:      file,
 		}, nil
 	}
