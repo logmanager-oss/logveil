@@ -20,13 +20,13 @@ type Config struct {
 
 // LoadAndValidate loads values from user supplied input into Config struct and validates them
 func (c *Config) LoadAndValidate() {
-	flag.Func("d", "Path to directory with anonymizing data", validateDir(c.AnonymizationDataPath))
+	flag.Func("d", "Path to directory with anonymizing data", c.validateDirPath())
 
-	flag.Func("i", "Path to input file containing logs to be anonymized", validateInput(c.InputPath))
+	flag.Func("i", "Path to input file containing logs to be anonymized", c.validateInputPath())
 
-	flag.Func("c", "Path to input file containing custom anonymization mappings", validateInput(c.CustomReplacementMapPath))
+	flag.Func("c", "Path to input file containing custom anonymization mappings", c.validateCustomMappingPath())
 
-	flag.Func("o", "Path to output file (default: Stdout)", validateOutput(c.OutputPath))
+	flag.Func("o", "Path to output file (default: Stdout)", c.validateOutput())
 
 	flag.BoolVar(&c.IsVerbose, "v", false, "Enable verbose logging (default: Disabled)")
 	flag.BoolVar(&c.IsLmExport, "e", false, "Change input file type to LM export (default: LM Backup)")
