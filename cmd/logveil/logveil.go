@@ -2,14 +2,17 @@ package logveil
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"os/signal"
 
 	"github.com/logmanager-oss/logveil/internal/anonymizer"
 	"github.com/logmanager-oss/logveil/internal/config"
-	"github.com/logmanager-oss/logveil/internal/files"
+	"github.com/logmanager-oss/logveil/internal/handlers"
 	"github.com/logmanager-oss/logveil/internal/proof"
 	"github.com/logmanager-oss/logveil/internal/reader"
 	"github.com/logmanager-oss/logveil/internal/writer"
@@ -25,23 +28,30 @@ func Start() {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
-	filesHandler := &files.FilesHandler{}
+	filesHandler := &handlers.Files{}
 	defer filesHandler.Close()
+
+	buffersHandler := &handlers.Buffers{}
+	defer buffersHandler.Flush()
 
 	inputReader, err := reader.CreateInputReader(config, filesHandler)
 	if err != nil {
+		slog.Error("initializing input reader", "error", err)
 		return
 	}
-	outputWriter, err := writer.CreateOutputWriter(config, filesHandler)
+	outputWriter, err := writer.CreateOutputWriter(config, filesHandler, buffersHandler)
 	if err != nil {
+		slog.Error("initializing output writer", "error", err)
 		return
 	}
-	proofWriter, err := proof.CreateProofWriter(config, filesHandler)
+	proofWriter, err := proof.CreateProofWriter(config, filesHandler, buffersHandler)
 	if err != nil {
+		slog.Error("initializing proof writer", "error", err)
 		return
 	}
 	anonymizerDoer, err := anonymizer.CreateAnonymizer(config, proofWriter)
 	if err != nil {
+		slog.Error("initializing anonymizer", "error", err)
 		return
 	}
 
@@ -55,7 +65,8 @@ func Start() {
 }
 
 func RunAnonymizationLoop(inputReader reader.InputReader, outputWriter *bufio.Writer, anonymizerDoer *anonymizer.Anonymizer) error {
-	defer outputWriter.Flush()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
 	for {
 		logLine, err := inputReader.ReadLine()
@@ -70,7 +81,16 @@ func RunAnonymizationLoop(inputReader reader.InputReader, outputWriter *bufio.Wr
 
 		_, err = fmt.Fprintln(outputWriter, anonymizedLogLine)
 		if err != nil {
-			return fmt.Errorf("writing log line to buffer: %v", err)
+			return fmt.Errorf("writing log line %s: %v", anonymizedLogLine, err)
+		}
+
+		select {
+		case <-ctx.Done():
+			fmt.Println("\nInterrupt received, closing...")
+			stop()
+			return nil
+		default:
+			continue
 		}
 	}
 }

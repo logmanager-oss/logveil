@@ -23,24 +23,22 @@ There are two components needed to make this work:
 
 ```
 Usage of ./logveil:
+  -c value
+        Path to input file containing custom anonymization mappings
   -d value
         Path to directory with anonymizing data
+  -e    Change input file type to LM export (default: LM Backup)
   -i value
-        Path to input file containing logs to be anonymized (mandatory - if you don't specify input, code will fail)
+        Path to input file containing logs to be anonymized
   -o value
         Path to output file (default: Stdout)
-  -c value
-        Path to input file with custom anonymization mapping
-  -v
-        Enable verbose logging
-  -e
-        Change input file type to LM export (default: LM Backup)
-  -p
-        Disable proof writer (default: Enabled)
-  -r
-        Disable persistent (per session) replacement map (default: Enabled)
-  -h
-        Help for logveil
+  -p    Enable proof writer (default: Disabled)
+  -r    Enable persistent (per session) replacement map (default: Disabled)
+  -rs int
+        Size of the reader buffer in Bytes (default 4000000)
+  -v    Enable verbose logging (default: Disabled)
+  -ws int
+        Size of the writer buffer in Bytes (default 2000000)
 ```
 
 **Examples:**
@@ -53,15 +51,15 @@ Usage of ./logveil:
 
 `./logveil -d example_anon_data/ -i lm_backup.gz -o output.txt`
 
-3. Read log data from LM Backup file (GZIP), output anonymization result to `output.txt` file and disable writing anonymization proof.
+3. Read log data from LM Backup file (GZIP), output anonymization result to `output.txt` file and enable writing anonymization proof.
 
 `./logveil -d example_anon_data/ -i lm_backup.gz -o output.txt -p`
 
-4. Read log data from LM Export file (CSV), output anonymization result to standard output (STDOUT) and disable writing anonymization proof.
+4. Read log data from LM Export file (CSV), output anonymization result to standard output (STDOUT) and enable writing anonymization proof.
 
 `./logveil -d example_anon_data/ -e -i lm_export.csv -p`
 
-5. Read log data from LM Export file (CSV), output anonymization result to standard output (STDOUT), disable writing anonymization proof and enable verbose logging.
+5. Read log data from LM Export file (CSV), output anonymization result to standard output (STDOUT), enable writing anonymization proof and verbose logging.
 
 `./logveil -d example_anon_data/ -e -i lm_export.csv -p -v`
 
@@ -104,6 +102,8 @@ If you want to anonymize values in `organization` and `username` keys, you need 
 2. `organization.txt`
 
 Both files should contain appropriate fake data for the values they will be masking.
+
+**Make sure your filenames DOES NOT contain `msg.`**
 
 ### Regexp scanning and dynamic fake data generation
 
@@ -162,9 +162,11 @@ And anonymization proof:
 {"original": "71:e5:41:18:cb:3e", "new": "0f:da:68:92:7f:2b"},
 ```
 
-## Replacement map and possible memory issues
+## Replacement map, possible memory issues and performance
 
-LogVeil keeps a replacement map in memory for each code run (per session) to make sure each unique value gets the same anonymized value each time it is encountered. Depending on the size of input data this replacement map can grow quite large, potentially even exhausting available memory (though unlikely). If you'll encounter a memory issue use `-r` flag to disable persistent replacement map.
+You can use `-r` flag to enable persistent replacement map. In such case LogVeil will keep replacement map in memory for each code run (per session) to make sure each unique value gets the same anonymized value each time it is encountered. Depending on the size of input data this replacement map can grow quite large which will cause degrading performance.
+
+In case of performance issues you can try using `rs` and `ws` flags to chage reader/writer buffer capacity - less I/O operations due to larger buffers should improve performance.
 
 ## Release
 

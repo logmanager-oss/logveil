@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"maps"
 	"regexp"
+	"strings"
 
 	"math/rand/v2"
 
@@ -49,14 +50,14 @@ func CreateAnonymizer(config *config.Config, proofWriter *proof.ProofWriter) (*A
 }
 
 func (an *Anonymizer) Anonymize(logLine map[string]string) string {
-	replacementMap := an.loadAndReplace(logLine, an.replacementMap)
+	replacementMap := an.loadAnonymizationData(logLine, an.replacementMap)
 
 	logLineRaw := logLine["raw"]
-	replacementMap = an.generateAndReplace(logLineRaw, replacementMap, an.lookup.ValidIpv4, an.generator.GenerateRandomIPv4())
-	replacementMap = an.generateAndReplace(logLineRaw, replacementMap, an.lookup.ValidIpv6, an.generator.GenerateRandomIPv6())
-	replacementMap = an.generateAndReplace(logLineRaw, replacementMap, an.lookup.ValidMac, an.generator.GenerateRandomMac())
-	replacementMap = an.generateAndReplace(logLineRaw, replacementMap, an.lookup.ValidEmail, an.generator.GenerateRandomEmail())
-	replacementMap = an.generateAndReplace(logLineRaw, replacementMap, an.lookup.ValidUrl, an.generator.GenerateRandomUrl())
+	replacementMap = an.generateAnonymizationData(logLineRaw, replacementMap, an.lookup.ValidIpv4, an.generator.GenerateRandomIPv4())
+	replacementMap = an.generateAnonymizationData(logLineRaw, replacementMap, an.lookup.ValidIpv6, an.generator.GenerateRandomIPv6())
+	replacementMap = an.generateAnonymizationData(logLineRaw, replacementMap, an.lookup.ValidMac, an.generator.GenerateRandomMac())
+	replacementMap = an.generateAnonymizationData(logLineRaw, replacementMap, an.lookup.ValidEmail, an.generator.GenerateRandomEmail())
+	replacementMap = an.generateAnonymizationData(logLineRaw, replacementMap, an.lookup.ValidUrl, an.generator.GenerateRandomUrl())
 
 	if an.isPersistReplacementMap {
 		maps.Copy(an.replacementMap, replacementMap)
@@ -65,13 +66,13 @@ func (an *Anonymizer) Anonymize(logLine map[string]string) string {
 	return an.replace(logLineRaw, replacementMap)
 }
 
-func (an *Anonymizer) loadAndReplace(logLine map[string]string, replacementMap map[string]string) map[string]string {
+func (an *Anonymizer) loadAnonymizationData(logLine map[string]string, replacementMap map[string]string) map[string]string {
 	for field, value := range logLine {
 		if field == "raw" {
 			continue
 		}
 
-		if value == "" {
+		if value == "" || value == "-" {
 			continue
 		}
 
@@ -90,7 +91,7 @@ func (an *Anonymizer) loadAndReplace(logLine map[string]string, replacementMap m
 	return replacementMap
 }
 
-func (an *Anonymizer) generateAndReplace(rawLog string, replacementMap map[string]string, regexp *regexp.Regexp, generatedData string) map[string]string {
+func (an *Anonymizer) generateAnonymizationData(rawLog string, replacementMap map[string]string, regexp *regexp.Regexp, generatedData string) map[string]string {
 	values := regexp.FindAllString(rawLog, -1)
 
 	for _, value := range values {
@@ -99,6 +100,7 @@ func (an *Anonymizer) generateAndReplace(rawLog string, replacementMap map[strin
 		}
 
 		replacementMap[value] = generatedData
+		slog.Debug(fmt.Sprintf("Value matched via regexp. Reaplacing from %s to %s.\n", value, generatedData))
 	}
 
 	return replacementMap
@@ -106,16 +108,10 @@ func (an *Anonymizer) generateAndReplace(rawLog string, replacementMap map[strin
 
 func (an *Anonymizer) replace(rawLog string, replacementMap map[string]string) string {
 	for originalValue, newValue := range replacementMap {
-		// Added word boundary to avoid matching words withing word. For example "test" in "testing".
-		r := regexp.MustCompile(fmt.Sprintf(`\b%s\b`, originalValue))
+		occurrencesCount := strings.Count(rawLog, originalValue)
 
-		var found bool
-		rawLog = r.ReplaceAllStringFunc(rawLog, func(originalValue string) string {
-			found = true
-			return newValue
-		})
-
-		if found {
+		if occurrencesCount > 0 {
+			rawLog = strings.Replace(rawLog, originalValue, newValue, occurrencesCount)
 			an.proofWriter.Write(originalValue, newValue)
 		}
 	}
